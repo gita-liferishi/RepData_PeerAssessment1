@@ -1,25 +1,132 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research : Course Prokect 1
+by Suvrorup Mukherjee
+27th May, 2021
 
+## Introduction
+This is my submission for the Course Project 1 for the May 2021 version of the MOOC ["Reproducible Research" - John Hopkins Univeristy]
 
-## Loading and preprocessing the data
+## Required R packages
+The following R packages need to be loaded for the course work. 
+```{r requiredPackages, result = FALSE}
+require(data.table)
+require(ggplot2)
+require(plyr)
+```
 
+## Loading and Preprocessing the data
 
+### 1. Load the data
+```{r loadData}
+activity <- read.csv("activity.csv")
+head(activity)
+```
+
+### 2. Preprocess the data 
+The dates are stored as characters. We can verify this by :
+```{r preprocess1}
+class(activity$date)
+```
+
+Hence we convert it into Date type.
+```{r preprocess2}
+activity$date <- as.Date(activity$date)
+```
 
 ## What is mean total number of steps taken per day?
 
+### Creating new table for total steps taken every day
+We can see from the table the total steps taken everyday
+```{r dailySteps_data}
+dailySteps_data <- ddply(activity, .(date), summarise, steps = sum(steps, na.rm = TRUE))
+head(dailySteps_data)
+```
+
+### Histogram for the steps taken each day 
+```{r dailySteps_plot}
+hist(dailySteps_data$steps, xlab = "Total steps taken each day", main = "Histogram of total steps")
+```
+
+## Mean and median of total steps taken per day
+```{r mean_dailysteps}
+mean(dailySteps_data$steps)
+```
+
+```{r median_dailysteps}
+median(dailySteps_data$steps)
+```
 
 
 ## What is the average daily activity pattern?
 
+### Create a new data table for mean steps taken at each time of the day 
+
+```{r intervalSteps_data}
+intervalSteps_data <- ddply(data, .(interval), summarise, steps = mean(steps, na.rm = TRUE))
+head(intervalSteps_data)
+```
+
+### Time series plot of average steps per day against intervals
+
+```{r average_plot}
+plot(intervalSteps_data$interval, intervalSteps_data$steps, type = "l")
+```
+
+### Which interval contains the maximum number of steps?
+
+```{r intervalsteps_max}
+intervalSteps_data[which.max(intervalSteps_data$steps), "interval"]
+```
 
 
-## Imputing missing values
+## Imputing missing values 
 
+## The number of rows with missing values in the dataset
+```{r num_na}
+sum(!complete.cases(activity))
+```
 
+### Devise a strategy to fill in all the missing values
+I'll fill the missing values with the rounded mean of the 5-minute interval.
 
-## Are there differences in activity patterns between weekdays and weekends?
+### New dataset with missing values filled in
+```{r filled_missingValues}
+mv <- activity
+for(i in seq(dim(mv)[1])){
+  if(is.na(mv[i,"steps"])){
+    mv[i, "steps"] = intervalSteps_data[which(intervalSteps_data$interval == mv[i, "interval"]), "steps"]
+  }
+}
+head(mv)
+```
+
+### Histogram of total number of steps taken each day
+```{r hist_natotal}
+replacedvalue_steps <- ddply(mv, .(date), summarise, steps = sum(steps, na.rm = TRUE))
+hist(replacedvalue_steps$steps, xlab = "Total steps taken each day", main = "Histogram of total steps in the new set")
+```
+
+### New Mean and Median 
+We notice that the mean has increased, while the median is almost the same.
+The mean and median are equal if this strategy is followed.
+```{r mean_newdailysteps}
+mean(replacedvalue_steps$steps)
+```
+
+```{r median_newdailysteps}
+median(replacedvalue_steps$steps)
+```
+
+## Are there differences between weekdays and weekends?
+
+### Create new factor variable in the datasteps 
+```{r day_factorVariable}
+mv$wday <- ifelse(wday(mv$date)<6, "weekday", "weekend")
+mv$wday <- as.factor(mv$wday)
+head(mv)
+```
+
+### Multipanel plot for the mean steps taken for each interval
+```{r wday_plot}
+wday_intervalSteps <- ddply(mv, .(interval, wday), summarise, steps = mean(steps, na.rm = TRUE))
+ggplot(wday_intervalSteps, aes(x = interval, y = steps)) + geom_line() + xlab("time") + ggtitle("Number of Steps over an Average Day") + facet_grid(wday~.)
+```
