@@ -42,7 +42,7 @@ head(dailySteps_data)
 ```
 
 ### Histogram for the steps taken each day 
-```{r dailySteps_plot}
+```{r dailySteps_plot, echo = TRUE}
 hist(dailySteps_data$steps, xlab = "Total steps taken each day", main = "Histogram of total steps")
 ```
 
